@@ -109,7 +109,7 @@ export default function Home() {
             height={500}
             priority
             sizes="(max-width: 768px) 100vw, 50vw"
-            className="w-125 h-125 object-cover rounded-full shadow-2xl border-4 border-[#1a1a1a] shadow-[#ff6b00]/20"
+            className="w-[500px] h-[500px] object-cover rounded-full shadow-2xl border-4 border-[#1a1a1a] shadow-[#ff6b00]/20"
           />
         </div>
       </section>

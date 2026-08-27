@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
@@ -11,34 +11,40 @@ export default function Navbar() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [products, setProducts] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Navbar specific search states
+  const [navSearchQuery, setNavSearchQuery] = useState("");
+  const [isNavSearching, setIsNavSearching] = useState(false);
+  const searchRef = useRef(null);
+
   const [page, setPage] = useState(0);
   const [direction, setDirection] = useState(1);
   const [loading, setLoading] = useState(false);
 
-  const closeMenu = () => {
-    setSearchQuery("");
+  const closeMenuModal = () => {
     setIsModalOpen(false);
+    setSearchQuery("");
   };
 
-  // Fetch data, lock scrolling, and listen for the custom event
+  // Fetch all products on mount so search is instant everywhere
+  useEffect(() => {
+    supabase
+      .from("products")
+      .select("*")
+      .order("id", { ascending: true })
+      .then(({ data, error }) => {
+        if (error) console.error("Error fetching menu:", error);
+        setProducts(data || []);
+      });
+  }, []);
+
+  // Listen for the custom event to open the modal from anywhere
   useEffect(() => {
     const handleOpenMenu = () => setIsModalOpen(true);
     window.addEventListener("openMenuModal", handleOpenMenu);
 
     if (isModalOpen) {
       document.body.style.overflow = "hidden";
-      if (products.length === 0) {
-        queueMicrotask(() => setLoading(true));
-        supabase
-          .from("products")
-          .select("*")
-          .order("id", { ascending: true })
-          .then(({ data, error }) => {
-            if (error) console.error("Error fetching menu:", error);
-            setProducts(data || []);
-            setLoading(false);
-          });
-      }
     } else {
       document.body.style.overflow = "auto";
     }
@@ -46,16 +52,36 @@ export default function Navbar() {
     return () => {
       window.removeEventListener("openMenuModal", handleOpenMenu);
     };
-  }, [isModalOpen, products.length]);
+  }, [isModalOpen]);
 
-  // 1. Filter products based on search input
+  // Close navbar search dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (searchRef.current && !searchRef.current.contains(event.target)) {
+        setIsNavSearching(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Filter products for modal
   const filteredProducts = products.filter(
     (item) =>
       item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.category.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
-  // 2. Group filtered products by Category dynamically
+  // Filter products for Navbar dropdown
+  const navFilteredProducts = products
+    .filter(
+      (item) =>
+        item.name.toLowerCase().includes(navSearchQuery.toLowerCase()) ||
+        item.category.toLowerCase().includes(navSearchQuery.toLowerCase()),
+    )
+    .filter((item) => parseFloat(item.price) > 0); // Exclude footer notes for clean search dropdown
+
+  // Group filtered products by Category dynamically for modal
   const groupedProducts = filteredProducts.reduce((acc, item) => {
     if (!acc[item.category]) acc[item.category] = [];
     acc[item.category].push(item);
@@ -64,7 +90,6 @@ export default function Navbar() {
 
   const categories = Object.keys(groupedProducts);
 
-  // Pagination Logic (Show 2 Categories per page when NOT searching)
   const catsPerPage = 2;
   const totalPages = Math.ceil(categories.length / catsPerPage);
   const currentCats = categories.slice(
@@ -79,8 +104,9 @@ export default function Navbar() {
 
   return (
     <>
-      {/* 1. THE NAVBAR */}
-      <nav className="flex items-center justify-between px-6 md:px-16 py-6 sticky top-0 z-50 bg-[#0b0b0b]/90 backdrop-blur-md border-b border-[#1f1f1f]">
+      {/* 1. THE NAVBAR WITH SEARCH */}
+      <nav className="flex items-center justify-between px-6 md:px-12 py-5 sticky top-0 z-50 bg-[#0b0b0b]/95 backdrop-blur-md border-b border-[#1f1f1f]">
+        {/* Logo */}
         <Link
           href="/"
           className="flex items-center transition hover:opacity-80"
@@ -88,13 +114,14 @@ export default function Navbar() {
           <Image
             src="/shashime.png"
             alt="SHASHEME Logo"
-            width={192}
-            height={48}
-            className="h-10 md:h-12 w-auto object-contain"
+            width={160}
+            height={40}
+            className="h-9 md:h-11 w-auto object-contain"
           />
         </Link>
 
-        <div className="hidden md:flex gap-8 text-sm font-semibold text-gray-300">
+        {/* Links */}
+        <div className="hidden lg:flex items-center gap-7 text-sm font-semibold text-gray-300">
           <Link href="/" className="hover:text-[#ff6b00] transition">
             Home
           </Link>
@@ -121,7 +148,102 @@ export default function Navbar() {
           </Link>
         </div>
 
-        <div className="hidden md:block w-[72px]"></div>
+        {/* Right side: Navbar Search Bar */}
+        <div className="relative" ref={searchRef}>
+          <div className="flex items-center bg-[#121212] border border-[#1f1f1f] rounded-full px-3 py-1.5 focus-within:border-[#ff6b00] transition w-44 sm:w-56 md:w-64">
+            <Search className="w-4 h-4 text-gray-500 mr-2 shrink-0" />
+            <input
+              type="text"
+              placeholder="Search food..."
+              value={navSearchQuery}
+              onChange={(e) => {
+                setNavSearchQuery(e.target.value);
+                setIsNavSearching(true);
+              }}
+              onFocus={() => setIsNavSearching(true)}
+              className="w-full bg-transparent text-white text-xs md:text-sm focus:outline-none placeholder:text-gray-500"
+            />
+            {navSearchQuery && (
+              <button
+                onClick={() => setNavSearchQuery("")}
+                className="text-gray-500 hover:text-white text-xs ml-1"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
+          {/* Live Navbar Search Dropdown Results */}
+          {isNavSearching && navSearchQuery.trim() !== "" && (
+            <div className="absolute right-0 mt-2 w-72 sm:w-80 bg-[#121212] border border-[#1f1f1f] rounded-xl shadow-2xl overflow-hidden z-50 max-h-96 overflow-y-auto">
+              <div className="p-3 border-b border-[#1f1f1f] flex justify-between items-center bg-black/40">
+                <span className="text-xs font-mono text-gray-400 uppercase">
+                  Search Results
+                </span>
+                <span className="text-xs font-mono text-[#ff6b00]">
+                  {navFilteredProducts.length} found
+                </span>
+              </div>
+
+              {navFilteredProducts.length === 0 ? (
+                <div className="p-6 text-center text-gray-500 text-xs">
+                  No dishes found matching &quot;{navSearchQuery}&quot;
+                </div>
+              ) : (
+                <div className="divide-y divide-[#1f1f1f]">
+                  {navFilteredProducts.slice(0, 5).map((item) => (
+                    <div
+                      key={item.id}
+                      onClick={() => {
+                        setIsNavSearching(false);
+                        setNavSearchQuery("");
+                        setSearchQuery(item.name);
+                        setIsModalOpen(true);
+                      }}
+                      className="p-3 hover:bg-[#1a1a1a] transition cursor-pointer flex items-center justify-between gap-3"
+                    >
+                      <div className="flex items-center gap-3 overflow-hidden">
+                        {item.image_url ? (
+                          <img
+                            src={item.image_url}
+                            alt={item.name}
+                            className="w-10 h-10 rounded object-cover shrink-0"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded bg-[#1f1f1f] flex items-center justify-center text-[10px] text-gray-500 shrink-0">
+                            Food
+                          </div>
+                        )}
+                        <div className="truncate">
+                          <p className="text-white text-xs font-bold truncate">
+                            {item.name}
+                          </p>
+                          <p className="text-[10px] text-[#ff6b00] uppercase">
+                            {item.category}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-xs font-bold text-white shrink-0">
+                        {item.price} BDT
+                      </span>
+                    </div>
+                  ))}
+
+                  <button
+                    onClick={() => {
+                      setIsNavSearching(false);
+                      setSearchQuery(navSearchQuery);
+                      setIsModalOpen(true);
+                    }}
+                    className="w-full py-2.5 text-center text-xs font-bold text-[#ff6b00] hover:bg-[#ff6b00]/10 transition block"
+                  >
+                    View all in menu modal →
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </nav>
 
       {/* 2. THE TYPOGRAPHIC MENU MODAL WITH SEARCH */}
@@ -133,7 +255,7 @@ export default function Navbar() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={closeMenu}
+              onClick={closeMenuModal}
               className="absolute inset-0 bg-black/90 backdrop-blur-sm cursor-pointer"
             />
 
@@ -149,12 +271,12 @@ export default function Navbar() {
                 <Image
                   src="/shashime.png"
                   alt="Shashime"
-                  width={160}
-                  height={40}
-                  className="h-6 md:h-10 object-contain"
+                  width={140}
+                  height={35}
+                  className="h-6 md:h-8 object-contain"
                 />
 
-                {/* Professional Search Input */}
+                {/* Modal Search Input */}
                 <div className="relative w-full md:w-80">
                   <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-500">
                     <Search className="w-4 h-4" />
@@ -165,7 +287,7 @@ export default function Navbar() {
                     value={searchQuery}
                     onChange={(e) => {
                       setSearchQuery(e.target.value);
-                      setPage(0); // Reset pagination on search
+                      setPage(0);
                     }}
                     className="w-full bg-[#121212] text-white text-sm rounded-full pl-9 pr-4 py-2 border border-[#1f1f1f] focus:outline-none focus:border-[#ff6b00] transition"
                   />
@@ -180,16 +302,15 @@ export default function Navbar() {
                 </div>
 
                 <button
-                  onClick={closeMenu}
+                  onClick={closeMenuModal}
                   className="text-gray-400 hover:text-white transition hidden md:block"
                 >
                   <X className="w-7 h-7" />
                 </button>
               </div>
 
-              {/* Body: Animated Book Pages or Live Search Results */}
+              {/* Body */}
               <div className="flex-1 relative flex overflow-hidden">
-                {/* Left Side: Vertical Menu Text (Hidden on mobile or when searching) */}
                 {!searchQuery && (
                   <div className="hidden md:flex w-28 items-end justify-center pb-24 z-10 pointer-events-none">
                     <h2
@@ -201,9 +322,8 @@ export default function Navbar() {
                   </div>
                 )}
 
-                {/* Right Side: Dynamic Data */}
                 <div className="flex-1 relative p-6 md:p-10 md:pl-0 overflow-y-auto">
-                  {loading ? (
+                  {loading && products.length === 0 ? (
                     <div className="flex justify-center items-center h-full text-[#ff6b00]">
                       Loading menu...
                     </div>
@@ -218,7 +338,6 @@ export default function Navbar() {
                       </button>
                     </div>
                   ) : searchQuery ? (
-                    /* Instant Search Results Layout (Shows all matches smoothly) */
                     <div className="space-y-8 pr-2">
                       <p className="text-xs font-mono text-gray-500 uppercase tracking-widest">
                         Found{" "}
@@ -267,7 +386,6 @@ export default function Navbar() {
                       ))}
                     </div>
                   ) : (
-                    /* Default Page-by-Page Book Layout */
                     <AnimatePresence mode="wait" custom={direction}>
                       <motion.div
                         key={page}
@@ -320,7 +438,7 @@ export default function Navbar() {
                 </div>
               </div>
 
-              {/* Footer: Slide Arrows (Hidden during active search for cleaner UX) */}
+              {/* Footer */}
               <div className="p-4 md:p-6 border-t border-[#1f1f1f] flex justify-between items-center z-10 bg-black">
                 {!searchQuery ? (
                   <>
@@ -351,7 +469,7 @@ export default function Navbar() {
                 )}
 
                 <button
-                  onClick={closeMenu}
+                  onClick={closeMenuModal}
                   className="text-xs text-gray-400 hover:text-white md:hidden"
                 >
                   Close Menu
