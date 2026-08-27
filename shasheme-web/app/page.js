@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase"; // Adjust to '../lib/supabase' if needed
 import Link from "next/link";
+import Image from "next/image";
 import {
   ArrowRight,
   Leaf,
@@ -69,9 +70,9 @@ export default function Home() {
 
           {/* Decorative Divider */}
           <div className="flex items-center gap-4 mb-6">
-            <div className="h-[1px] w-16 bg-gray-500"></div>
+            <div className="h-px w-16 bg-gray-500"></div>
             <Heart className="w-4 h-4 text-[#ff6b00] fill-[#ff6b00]" />
-            <div className="h-[1px] w-16 bg-gray-500"></div>
+            <div className="h-px w-16 bg-gray-500"></div>
           </div>
 
           <p className="text-gray-400 text-lg mb-10 max-w-sm">
@@ -101,18 +102,22 @@ export default function Home() {
         {/* Hero Image Area (Right Side) */}
         <div className="md:w-1/2 mt-12 md:mt-0 relative flex justify-end">
           {/* You can replace this src with your own transparent background food image later */}
-          <img
+          <Image
             src="https://images.unsplash.com/photo-1555939594-58d7cb561ad1?q=80&w=1000&auto=format&fit=crop"
             alt="Delicious Pasta"
-            className="w-[500px] h-[500px] object-cover rounded-full shadow-2xl border-4 border-[#1a1a1a] shadow-[#ff6b00]/20"
+            width={500}
+            height={500}
+            priority
+            sizes="(max-width: 768px) 100vw, 50vw"
+            className="w-125 h-125 object-cover rounded-full shadow-2xl border-4 border-[#1a1a1a] shadow-[#ff6b00]/20"
           />
         </div>
       </section>
 
       {/* 3. FEATURES BANNER */}
-      <section className="px-6 md:px-16 mt-[-40px] relative z-20">
+      <section className="px-6 md:px-16 -mt-10 relative z-20">
         <div className="bg-[#f8f5f0] rounded-3xl p-8 md:p-12 flex flex-col md:flex-row justify-between items-center gap-8 shadow-xl">
-          <div className="flex flex-col items-center text-center max-w-[250px]">
+          <div className="flex flex-col items-center text-center max-w-62.5">
             <div className="w-16 h-16 rounded-full border-2 border-black flex items-center justify-center mb-4 text-[#ff6b00]">
               <Leaf className="w-8 h-8" />
             </div>
@@ -124,9 +129,9 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="hidden md:block w-[1px] h-24 bg-gray-300"></div>
+          <div className="hidden md:block w-px h-24 bg-gray-300"></div>
 
-          <div className="flex flex-col items-center text-center max-w-[250px]">
+          <div className="flex flex-col items-center text-center max-w-62.5">
             <div className="w-16 h-16 rounded-full border-2 border-black flex items-center justify-center mb-4 text-[#ff6b00]">
               <ChefHat className="w-8 h-8" />
             </div>
@@ -136,9 +141,9 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="hidden md:block w-[1px] h-24 bg-gray-300"></div>
+          <div className="hidden md:block w-px h-24 bg-gray-300"></div>
 
-          <div className="flex flex-col items-center text-center max-w-[250px]">
+          <div className="flex flex-col items-center text-center max-w-62.5">
             <div className="w-16 h-16 rounded-full border-2 border-black flex items-center justify-center mb-4 text-[#ff6b00]">
               <ConciergeBell className="w-8 h-8" />
             </div>
@@ -156,16 +161,16 @@ export default function Home() {
       <section className="px-6 md:px-16 py-24">
         <div className="text-center mb-16">
           <p className="text-[#ff6b00] font-bold text-sm tracking-widest uppercase mb-4 flex items-center justify-center gap-4">
-            <span className="w-12 h-[1px] bg-[#ff6b00]"></span> POPULAR DISHES{" "}
-            <span className="w-12 h-[1px] bg-[#ff6b00]"></span>
+            <span className="w-12 h-1px bg-[#ff6b00]"></span> POPULAR DISHES{" "}
+            <span className="w-12 h-1px bg-[#ff6b00]"></span>
           </p>
           <h2 className="text-4xl md:text-5xl font-serif font-bold text-white mb-6">
             Our Chefs Specials
           </h2>
           <div className="flex items-center justify-center gap-4">
-            <div className="h-[1px] w-12 bg-gray-600"></div>
+            <div className="h-1px w-12 bg-gray-600"></div>
             <span className="text-[#ff6b00]">✖</span>
-            <div className="h-[1px] w-12 bg-gray-600"></div>
+            <div className="h-1px w-12 bg-gray-600"></div>
           </div>
         </div>
 
@@ -184,9 +189,11 @@ export default function Home() {
                 </button>
 
                 {item.image_url ? (
-                  <img
+                  <Image
                     src={item.image_url}
                     alt={item.name}
+                    width={800}
+                    height={600}
                     className="w-full h-64 object-cover rounded-xl mb-6"
                   />
                 ) : (
@@ -210,7 +217,7 @@ export default function Home() {
                 </div>
 
                 <p className="text-2xl font-bold text-[#ff6b00]">
-                  ${item.price}
+                  ৳{item.price} /-
                 </p>
               </div>
             ))}
