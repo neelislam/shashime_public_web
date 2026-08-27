@@ -42,7 +42,7 @@ export default function Navbar() {
       window.removeEventListener("openMenuModal", handleOpenMenu);
     };
     // FIXED: Removed products.length from dependencies to prevent the infinite loading loop!
-  }, [isModalOpen]);
+  }, [isModalOpen, products.length]);
 
   // Group products by Category dynamically
   const groupedProducts = products.reduce((acc, item) => {
@@ -110,13 +110,13 @@ export default function Navbar() {
           </Link>
         </div>
 
-        <div className="hidden md:block w-[72px]"></div>
+        <div className="hidden md:block w-18"></div>
       </nav>
 
       {/* 2. THE TYPOGRAPHIC MENU MODAL */}
       <AnimatePresence>
         {isModalOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-6">
+          <div className="fixed inset-0 z-100 flex items-center justify-center p-2 sm:p-6">
             {/* Dark Blur Overlay */}
             <motion.div
               initial={{ opacity: 0 }}
@@ -135,9 +135,11 @@ export default function Navbar() {
             >
               {/* Header inside Modal */}
               <div className="flex justify-between items-center p-4 md:p-6 pb-0 z-10">
-                <img
+                <Image
                   src="/shashime.png"
                   alt="Shashime"
+                  width={160}
+                  height={40}
                   className="h-6 md:h-10 object-contain"
                 />
                 <button
