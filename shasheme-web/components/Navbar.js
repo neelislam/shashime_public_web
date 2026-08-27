@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { supabase } from '@/lib/supabase'; // Make sure this path is correct! Use '../lib/supabase' if needed.
+import { supabase } from '@/lib/supabase';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 
 export default function Navbar() {
@@ -13,12 +13,18 @@ export default function Navbar() {
   const [direction, setDirection] = useState(1);
   const [loading, setLoading] = useState(false);
 
-  // Fetch data and lock background scrolling when the modal is open
+  // Fetch data, lock scrolling, and listen for the custom event
   useEffect(() => {
+    const handleOpenMenu = () => setIsModalOpen(true);
+    window.addEventListener('openMenuModal', handleOpenMenu);
+
     if (isModalOpen) {
       document.body.style.overflow = 'hidden';
+      // Only fetch if we haven't loaded the products yet
       if (products.length === 0) {
-        supabase.from('products').select('*').order('category').then(({ data }) => {
+        setLoading(true);
+        supabase.from('products').select('*').order('id', { ascending: true }).then(({ data, error }) => {
+          if (error) console.error("Error fetching menu:", error);
           setProducts(data || []);
           setLoading(false);
         });
@@ -26,39 +32,45 @@ export default function Navbar() {
     } else {
       document.body.style.overflow = 'auto';
     }
-  }, [isModalOpen, products.length]);
 
-  // Pagination Logic (4 items per page)
-  const itemsPerPage = 4;
-  const totalPages = Math.ceil(products.length / itemsPerPage);
-  const currentItems = products.slice(page * itemsPerPage, (page + 1) * itemsPerPage);
+    return () => {
+      window.removeEventListener('openMenuModal', handleOpenMenu);
+    };
+  // FIXED: Removed products.length from dependencies to prevent the infinite loading loop!
+  }, [isModalOpen]); 
+
+  // Group products by Category dynamically
+  const groupedProducts = products.reduce((acc, item) => {
+    if (!acc[item.category]) acc[item.category] = [];
+    acc[item.category].push(item);
+    return acc;
+  }, {});
+
+  const categories = Object.keys(groupedProducts);
+  
+  // Pagination Logic (Show 2 Categories per page)
+  const catsPerPage = 2;
+  const totalPages = Math.ceil(categories.length / catsPerPage);
+  const currentCats = categories.slice(page * catsPerPage, (page + 1) * catsPerPage);
 
   const changePage = (newDirection) => {
     setDirection(newDirection);
     setPage((prev) => prev + newDirection);
   };
 
-  const openMenu = () => {
-    setLoading(true);
-    setIsModalOpen(true);
-  };
-
   return (
     <>
       {/* 1. THE NAVBAR */}
       <nav className="flex items-center justify-between px-6 md:px-16 py-6 sticky top-0 z-50 bg-[#0b0b0b]/90 backdrop-blur-md border-b border-[#1f1f1f]">
-        <Link href="/" className="text-2xl font-black tracking-widest text-white flex items-center gap-2">
-          <span className="bg-[#ff6b00] text-white px-2 py-1 rounded-lg">SHASHEME</span>
+        <Link href="/" className="flex items-center transition hover:opacity-80">
+          <img src="/shashime.png" alt="SHASHEME Logo" className="h-10 md:h-12 w-auto object-contain" />
         </Link>
 
         <div className="hidden md:flex gap-8 text-sm font-semibold text-gray-300">
           <Link href="/" className="hover:text-[#ff6b00] transition">Home</Link>
-          
-          {/* Menu button now triggers the modal instead of linking to a page */}
-          <button onClick={openMenu} className="hover:text-[#ff6b00] transition cursor-pointer">
+          <button onClick={() => setIsModalOpen(true)} className="hover:text-[#ff6b00] transition cursor-pointer">
             Menu
           </button>
-          
           <Link href="/about" className="hover:text-[#ff6b00] transition">About Us</Link>
           <Link href="/gallery" className="hover:text-[#ff6b00] transition">Gallery</Link>
           <Link href="/contact" className="hover:text-[#ff6b00] transition">Contact</Link>
@@ -68,90 +80,118 @@ export default function Navbar() {
         <div className="hidden md:block w-[72px]"></div> 
       </nav>
 
-      {/* 2. THE SLIDING BOOK MODAL */}
+      {/* 2. THE TYPOGRAPHIC MENU MODAL */}
       <AnimatePresence>
         {isModalOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-6">
             
             {/* Dark Blur Overlay */}
             <motion.div 
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} 
               onClick={() => setIsModalOpen(false)}
-              className="absolute inset-0 bg-black/80 backdrop-blur-sm cursor-pointer"
+              className="absolute inset-0 bg-black/90 backdrop-blur-sm cursor-pointer"
             />
 
-            {/* Modal Box */}
+            {/* Modal Box - Pure Black like the JPEGs */}
             <motion.div 
               initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
-              className="relative w-full max-w-5xl bg-[#121212] border border-[#1f1f1f] rounded-2xl shadow-2xl flex flex-col h-[85vh] md:h-[75vh] overflow-hidden"
+              className="relative w-full max-w-5xl bg-black border border-[#1f1f1f] flex flex-col h-[90vh] overflow-hidden"
             >
-              {/* Header */}
-              <div className="flex justify-between items-center p-6 border-b border-[#1f1f1f]">
-                <h2 className="text-3xl font-serif font-bold text-white">Full Menu</h2>
-                <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-[#ff6b00] transition">
+              
+              {/* Header inside Modal */}
+              <div className="flex justify-between items-center p-6 md:p-10 pb-0 z-10">
+                <img src="/shashime.png" alt="Shashime" className="h-10 md:h-16 object-contain" />
+                <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-white transition">
                   <X className="w-8 h-8" />
                 </button>
               </div>
 
               {/* Body: Animated Book Pages */}
-              <div className="flex-1 relative p-2 md:p-6 overflow-hidden">
-                {loading ? (
-                  <div className="flex justify-center items-center h-full text-[#ff6b00]">Loading spicy delights...</div>
-                ) : products.length === 0 ? (
-                  <div className="flex justify-center items-center h-full text-gray-500">The menu is currently empty.</div>
-                ) : (
-                  <AnimatePresence mode="wait" custom={direction}>
-                    <motion.div
-                      key={page}
-                      custom={direction}
-                      initial={{ opacity: 0, x: direction > 0 ? 100 : -100 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: direction > 0 ? -100 : 100 }}
-                      transition={{ duration: 0.3, ease: "easeInOut" }}
-                      className="absolute inset-0 w-full h-full p-4 md:p-8 grid grid-cols-1 md:grid-cols-2 gap-4 content-start overflow-y-auto"
-                    >
-                      {currentItems.map(item => (
-                        <div key={item.id} className="flex gap-4 items-center bg-[#0b0b0b] p-4 rounded-xl border border-[#1f1f1f] hover:border-[#ff6b00]/50 transition">
-                          {item.image_url ? (
-                            <img src={item.image_url} alt={item.name} className="w-24 h-24 md:w-32 md:h-32 object-cover rounded-lg" />
-                          ) : (
-                            <div className="w-24 h-24 md:w-32 md:h-32 bg-[#1a1a1a] rounded-lg flex items-center justify-center text-xs text-gray-600">No Img</div>
-                          )}
-                          <div className="flex-1">
-                            <div className="flex justify-between items-start mb-1">
-                              <h3 className="font-bold text-white text-lg leading-tight">{item.name}</h3>
-                              <p className="text-[#ff6b00] font-black">${item.price}</p>
-                            </div>
-                            <span className="text-xs text-gray-500 uppercase tracking-wider block">{item.category}</span>
-                            <span className="text-xs border border-[#ff6b00]/30 text-[#ff6b00] px-2 py-0.5 rounded mt-2 inline-block">
-                              {item.spiciness}
-                            </span>
+              <div className="flex-1 relative flex overflow-hidden">
+                
+                {/* Left Side: Vertical Menu Text (Hidden on mobile) */}
+                <div className="hidden md:flex w-32 items-end justify-center pb-24 z-10 pointer-events-none">
+                  <h2 
+                    className="text-7xl text-gray-200 -rotate-90 origin-center whitespace-nowrap opacity-90" 
+                    style={{ fontFamily: 'cursive' }}
+                  >
+                    Menu
+                  </h2>
+                </div>
+
+                {/* Right Side: Dynamic Category Data */}
+                <div className="flex-1 relative p-6 md:p-10 md:pl-0">
+                  {loading ? (
+                    <div className="flex justify-center items-center h-full text-[#ff6b00]">Loading menu...</div>
+                  ) : products.length === 0 ? (
+                    <div className="flex justify-center items-center h-full text-gray-500">The menu is empty. Add items in the Admin panel!</div>
+                  ) : (
+                    <AnimatePresence mode="wait" custom={direction}>
+                      <motion.div
+                        key={page}
+                        custom={direction}
+                        initial={{ opacity: 0, x: direction > 0 ? 50 : -50 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: direction > 0 ? -50 : 50 }}
+                        transition={{ duration: 0.3, ease: "easeInOut" }}
+                        className="absolute inset-0 w-full h-full p-6 md:p-10 md:pl-0 overflow-y-auto space-y-12"
+                      >
+                        {currentCats.map(cat => (
+                          <div key={cat}>
+                            {/* Category Title */}
+                            <h3 className="font-mono text-xl md:text-2xl text-white uppercase tracking-widest mb-6">
+                              {cat}
+                            </h3>
+                            
+                            {/* Items List */}
+                            <ul className="space-y-3">
+                              {groupedProducts[cat].map(item => {
+                                // Our smart trick: If price is 0, render it as the pinkish-red footer note
+                                const isNote = parseFloat(item.price) === 0;
+                                
+                                return (
+                                  <li key={item.id} className={isNote ? "text-[#d64057] mt-6 font-mono uppercase text-sm tracking-wider" : "flex items-start gap-3"}>
+                                    {!isNote && <span className="mt-2 w-1.5 h-1.5 bg-gray-300 rounded-full inline-block shrink-0" />}
+                                    
+                                    {!isNote ? (
+                                      <span className="text-gray-300 leading-relaxed text-sm md:text-base">
+                                        {item.name} 
+                                        {/* Standardized Price formatting */}
+                                        <span className="ml-2 font-bold">— {item.price} BDT</span>
+                                      </span>
+                                    ) : (
+                                      <span>{item.name}</span>
+                                    )}
+                                  </li>
+                                );
+                              })}
+                            </ul>
                           </div>
-                        </div>
-                      ))}
-                    </motion.div>
-                  </AnimatePresence>
-                )}
+                        ))}
+                      </motion.div>
+                    </AnimatePresence>
+                  )}
+                </div>
               </div>
 
               {/* Footer: Slide Arrows */}
-              <div className="p-4 md:p-6 border-t border-[#1f1f1f] flex justify-between items-center bg-[#0b0b0b]">
+              <div className="p-4 md:p-8 flex justify-between items-center z-10">
                 <button 
                   onClick={() => changePage(-1)} disabled={page === 0}
-                  className="p-3 rounded-full bg-[#121212] border border-[#1f1f1f] text-white hover:text-[#ff6b00] disabled:opacity-30 disabled:hover:text-white transition"
+                  className="p-2 text-gray-500 hover:text-white disabled:opacity-30 transition"
                 >
-                  <ChevronLeft className="w-6 h-6" />
+                  <ChevronLeft className="w-8 h-8" />
                 </button>
                 
-                <span className="text-gray-400 font-medium tracking-widest text-sm uppercase">
+                <span className="text-gray-600 font-mono tracking-widest text-xs uppercase">
                   Page {page + 1} of {totalPages || 1}
                 </span>
                 
                 <button 
                   onClick={() => changePage(1)} disabled={page === totalPages - 1 || totalPages === 0}
-                  className="p-3 rounded-full bg-[#121212] border border-[#1f1f1f] text-white hover:text-[#ff6b00] disabled:opacity-30 disabled:hover:text-white transition"
+                  className="p-2 text-gray-500 hover:text-white disabled:opacity-30 transition"
                 >
-                  <ChevronRight className="w-6 h-6" />
+                  <ChevronRight className="w-8 h-8" />
                 </button>
               </div>
 

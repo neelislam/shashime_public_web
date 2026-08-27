@@ -79,12 +79,16 @@ export default function Home() {
           </p>
 
           <div className="flex gap-4">
-            <Link
-              href="/menu"
+            {/* Changed from Link to a button that triggers our custom event */}
+            <button
+              onClick={() =>
+                window.dispatchEvent(new CustomEvent("openMenuModal"))
+              }
               className="bg-[#ff6b00] hover:bg-[#e65c00] text-white font-bold py-3 px-8 rounded-full flex items-center gap-2 transition"
             >
               VIEW MENU <ArrowRight className="w-4 h-4" />
-            </Link>
+            </button>
+
             <Link
               href="/contact"
               className="border border-white hover:bg-white hover:text-black text-white font-bold py-3 px-8 rounded-full transition"
