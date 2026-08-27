@@ -1,11 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 
 export default function AdminPage() {
-  // Auth States
   const [session, setSession] = useState(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -27,10 +26,10 @@ export default function AdminPage() {
   const [editCategory, setEditCategory] = useState('');
   const [editSpiciness, setEditSpiciness] = useState('Medium');
 
-  const fetchProducts = async () => {
+  const fetchProducts = useCallback(async () => {
     const { data } = await supabase.from('products').select('*').order('created_at', { ascending: false });
     setProducts(data || []);
-  };
+  }, []);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -45,7 +44,7 @@ export default function AdminPage() {
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [fetchProducts]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -57,7 +56,8 @@ export default function AdminPage() {
     await supabase.auth.signOut();
   };
 
-  // Get unique categories to help Admin with auto-complete suggestions
+  // Extract unique suggestions for auto-complete dropdowns
+  const existingNames = [...new Set(products.map(p => p.name))].filter(Boolean);
   const existingCategories = [...new Set(products.map(p => p.category))].filter(Boolean);
 
   const uploadImage = async (imageFile) => {
@@ -77,7 +77,6 @@ export default function AdminPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      // Image is now optional so the admin can add the red footer text
       const image_url = file ? await uploadImage(file) : null;
       
       const { error } = await supabase.from('products').insert([
@@ -154,16 +153,31 @@ export default function AdminPage() {
           </div>
         </header>
 
-        {/* CREATE SECTION */}
+        {/* CREATE SECTION WITH AUTOCOMPLETE */}
         <div className="bg-[#121212] p-6 rounded-xl border border-[#1f1f1f] mb-8 shadow-xl">
           <h2 className="text-xl font-bold text-white mb-4">➕ Add New Menu Item</h2>
           <form onSubmit={handleCreate} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <input type="text" placeholder="Dish Name (or Footer Text)" value={name} onChange={e => setName(e.target.value)} required className="bg-[#0b0b0b] p-3 rounded border border-[#1f1f1f] outline-none focus:border-[#ff6b00] text-white" />
             
-            {/* The Price determines if it's normal text or red footer text! */}
+            {/* Dish Name with Auto-complete */}
+            <div>
+              <input 
+                list="name-suggestions" 
+                type="text" 
+                placeholder="Dish Name / Footer Text" 
+                value={name} 
+                onChange={e => setName(e.target.value)} 
+                required 
+                className="w-full bg-[#0b0b0b] p-3 rounded border border-[#1f1f1f] outline-none focus:border-[#ff6b00] text-white" 
+              />
+              <datalist id="name-suggestions">
+                {existingNames.map(n => <option key={n} value={n} />)}
+              </datalist>
+            </div>
+
+            {/* Price */}
             <input type="number" step="0.01" placeholder="Price (Use 0 for red footer text)" value={price} onChange={e => setPrice(e.target.value)} required className="bg-[#0b0b0b] p-3 rounded border border-[#1f1f1f] outline-none focus:border-[#ff6b00] text-white" />
             
-            {/* Dynamic Category Input with Smart Suggestions */}
+            {/* Category with Auto-complete */}
             <div>
               <input 
                 list="category-suggestions" 
@@ -187,7 +201,7 @@ export default function AdminPage() {
             </select>
 
             <div className="md:col-span-2">
-              <label className="block text-sm text-gray-400 mb-2">Upload Image (Optional for red text)</label>
+              <label className="block text-sm text-gray-400 mb-2">Upload Image (Optional)</label>
               <input type="file" accept="image/*" onChange={e => setFile(e.target.files[0])} className="text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:bg-[#ff6b00] file:text-white hover:file:bg-[#e65c00]" />
             </div>
 
@@ -208,7 +222,6 @@ export default function AdminPage() {
                   <input type="text" value={editName} onChange={e => setEditName(e.target.value)} className="bg-[#0b0b0b] text-white p-2 border border-[#1f1f1f] rounded" />
                   <input type="number" step="0.01" value={editPrice} onChange={e => setEditPrice(e.target.value)} className="bg-[#0b0b0b] text-white p-2 border border-[#1f1f1f] rounded" />
                   
-                  {/* Edit Category dynamically */}
                   <input list="category-suggestions" type="text" value={editCategory} onChange={e => setEditCategory(e.target.value)} className="bg-[#0b0b0b] text-white p-2 border border-[#1f1f1f] rounded" />
                   
                   <div className="flex gap-2">
@@ -227,7 +240,7 @@ export default function AdminPage() {
                     <div>
                       <h3 className="font-bold text-lg text-white">{item.name}</h3>
                       <p className="text-sm text-gray-400">
-                        {parseFloat(item.price) === 0 ? "Footer Text (0 BDT)" : `$${item.price}`} • <span className="text-[#ff6b00]">{item.category}</span> • {item.spiciness}
+                        {parseFloat(item.price) === 0 ? "Footer Text (0 BDT)" : `${item.price} BDT`} • <span className="text-[#ff6b00]">{item.category}</span> • {item.spiciness}
                       </p>
                     </div>
                   </div>
